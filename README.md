@@ -1,5 +1,5 @@
 <p align="center">
-<img src="FTL%20Brasil%20Logo.png" alt="Future Tech Leaders" width="720">
+<img src="FTL_Brasil_Logo.png" alt="Future Tech Leaders" width="720">
 </p> <h1 align="center">GeoPass</h1> <p align="center">
   WebGIS para previsão e visualização de passagens de satélites sobre localidades escolhidas.
 </p> <p align="center">
