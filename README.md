@@ -1,5 +1,5 @@
 <p align="center">
-<img src="assets/ftl-logo.png" alt="Future Tech Leaders" width="720">
+<img src="FTL%20Brasil%20Logo.png" alt="Future Tech Leaders" width="720">
 </p> <h1 align="center">GeoPass</h1> <p align="center">
   WebGIS para previsão e visualização de passagens de satélites sobre localidades escolhidas.
 </p> <p align="center">
@@ -78,7 +78,7 @@ fase2/server.py                   servidor Flask e APIs locais
 fase2/scripts/                   cálculo e geração dos dados
 fase2/web/                        interface com busca e cálculo dinâmico
 fase2/tests/                      testes do núcleo e da API
-assets/ftl-logo.png               logo usada neste README
+FTL Brasil Logo.png               logo usada neste README
 fase1.txt                         marcador da primeira fase
 ```
 
