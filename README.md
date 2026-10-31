@@ -1,43 +1,110 @@
-# GeoPass
+<p align="center">
+<img src="assets/ftl-logo.png" alt="Future Tech Leaders" width="720">
+</p> <h1 align="center">GeoPass</h1> <p align="center">
+  WebGIS para previsão e visualização de passagens de satélites sobre localidades escolhidas.
+</p> <p align="center">
+  <a href="#sobre-o-programa">Sobre o programa</a> ·
+  <a href="#sobre-o-geopass">Sobre o GeoPass</a> ·
+  <a href="#evolução-do-projeto">Evolução</a> ·
+  <a href="#estrutura">Estrutura</a>
+</p>
 
-Projeto de capstone desenvolvido no contexto do **Future Tech Leaders Brasil 2026 — Space Tech Bootcamp**. O GeoPass relaciona dados orbitais públicos a localizações na Terra para calcular e visualizar passagens de satélites em um mapa web.
+## Sobre o programa
 
-## Organização do repositório
+Este projeto foi desenvolvido como capstone do **Future Tech Leaders (FTL) Brasil 2026 — Space Tech Bootcamp**, um programa gratuito de capacitação online em tecnologias espaciais. A iniciativa brasileira é realizada pela Agência Espacial Brasileira (AEB), pelo Programa das Nações Unidas para o Desenvolvimento (PNUD), pelo Istanbul International Center for Private Sector in Development (UNDP ICPSD) e pelo SDG AI Lab. Segundo a [AEB](https://www.gov.br/aeb/pt-br/assuntos/noticias/inscricoes-abertas-para-o-bootcamp-de-tecnologias-espaciais-do-future-tech-leaders-programme), o bootcamp aborda Inteligência Artificial, Machine Learning, Sistemas de Informação Geográfica, GeoAI e outras competências aplicadas às tecnologias espaciais. A edição de 2026 foi anunciada como uma capacitação online de três meses, dirigida a estudantes e graduados de áreas STEM, geoespaciais, ambientais, planejamento urbano e áreas relacionadas, com faixa etária de 18 a 35 anos e conhecimento de Python.
 
-- [`fase1/`](fase1/) — primeiro MVP: geração local de previsões orbitais e visualização cartográfica estática.
-- [`fase2/`](fase2/) — evolução do MVP: busca manual de localidades, escolha de ponto no mapa e recálculo dinâmico no servidor Flask.
-- [`fase1.txt`](fase1.txt) — marcador solicitado para identificar a primeira fase.
+O FTL busca contribuir para a formação de jovens e estudantes universitários em tecnologias emergentes e para a redução da desigualdade digital. O [e-book oficial do programa](https://github.com/ftl-brazil-2026/ebook) organiza o material em três grandes módulos: **Fundamentos em GIS e Sensoriamento Remoto**, **Fundamentos em Machine Learning e Deep Learning** e **Estado da Arte**. O currículo trabalha com dados geoespaciais, APIs, plataformas de análise, aprendizado de máquina, aprendizado profundo e aplicações territoriais.
 
-Cada pasta de fase é uma versão completa e independente do projeto, com seu próprio `README.md`, dependências, testes e código. Para executar uma versão, entre na pasta correspondente e siga as instruções do README daquela fase.
+O GeoPass foi desenvolvido principalmente a partir do eixo de GIS e dados geoespaciais. Em vez de apresentar apenas dados orbitais brutos, o projeto os transforma em uma consulta cartográfica compreensível para uma localização na Terra.
+
+## Sobre o GeoPass
+
+O GeoPass é um protótipo de **WebGIS** que calcula e visualiza as próximas passagens de satélites sobre uma cidade ou coordenada escolhida pelo usuário. O sistema utiliza elementos orbitais públicos da CelesTrak e propagação SGP4 por meio do Skyfield para estimar eventos de subida, maior elevação e descida em relação ao observador.
+
+O problema abordado é a dificuldade de transformar informações orbitais técnicas em uma resposta geográfica prática: **quando um satélite passará sobre determinado local?** A aplicação relaciona tempo, posição orbital e localização do observador em uma interface de mapa. Assim, o usuário pode selecionar satélites, pesquisar uma cidade, clicar em um ponto do mapa e consultar horários, elevação máxima e azimute.
+
+A “passagem” apresentada pelo sistema é geométrica: o satélite ultrapassa o limite de elevação configurado em relação ao observador. Isso não equivale automaticamente a uma passagem visível a olho nu, pois iluminação solar, condições do céu, obstáculos e outros fatores também influenciam a observação.
 
 ## Evolução do projeto
 
 ### Fase 1 — mapa e previsões iniciais
 
-- Obtém dados orbitais GP em formato OMM da CelesTrak e os interpreta com Skyfield/SGP4.
-- Calcula passagens para localidades configuradas e grava um conjunto JSON para o mapa.
-- Apresenta localidades, trilhas terrestres, filtros de satélite e cartões com os horários e parâmetros da passagem.
-- Inclui testes unitários para agrupar corretamente eventos de subida, culminação e descida.
+A primeira fase estabelece o núcleo do projeto:
 
-### Fase 2 — consulta por local escolhido
+- obtenção de elementos orbitais OMM da CelesTrak;
 
-- Acrescenta um servidor local Flask e rotas para geocodificação e cálculo de passagens.
-- Permite buscar uma cidade manualmente com Nominatim e escolher entre os resultados; não usa autocomplete.
-- Permite clicar no mapa para selecionar coordenadas e recalcular as passagens para esse ponto.
-- Acrescenta seletor de fuso horário, sugestões regionais para o Brasil, cache de consultas e intervalo entre solicitações ao serviço de geocodificação.
-- Valida coordenadas, fusos e seleção de satélites, com limite de até 12 satélites por consulta nesta versão.
-- Mantém as trilhas do mapa como projeções terrestres pré-calculadas; elas não indicam posição ao vivo nem visibilidade garantida.
+- cálculo de passagens para localidades configuradas usando Skyfield/SGP4;
 
-## Testes
+- geração de um conjunto de dados JSON para a interface;
 
-Os comandos e dependências são próprios de cada fase. Na Fase 1, o pacote inclui quatro testes de núcleo. Na Fase 2, inclui onze testes de núcleo e API. Os READMEs de cada pasta trazem os comandos PowerShell para instalar dependências, testar e executar.
+- mapa Leaflet com localidades, trilhas terrestres e filtros de satélite;
 
-## Limites do conteúdo
+- cartões com horários, elevação máxima, azimute e época dos elementos;
 
-Este repositório reúne os arquivos disponíveis das **Fases 1 e 2**. Não inclui as etapas posteriores do GeoPass, como integração USB/serial com ESP32, implantação em Vercel ou recursos adicionados em versões seguintes. Passagem geométrica acima de um limiar de elevação não equivale, por si só, a visibilidade a olho nu.
+- testes unitários para o agrupamento correto de subida, culminação e descida.
 
-## Dados e atribuições
+### Fase 2 — consulta geográfica e cálculo dinâmico
 
-Os dados orbitais são obtidos da CelesTrak. O mapa usa Leaflet e cartografia do OpenStreetMap; a busca de localidades da Fase 2 utiliza Nominatim. Consulte os READMEs das fases para fontes, limitações e atribuições de uso.
+A segunda fase amplia a consulta para locais definidos pelo usuário:
 
-**Autor:** Luiz Gustavo de Barros e Silva Santos.
+- busca manual de cidades e lugares usando Nominatim;
+
+- escolha de um resultado de geocodificação;
+
+- clique direto no mapa para definir coordenadas;
+
+- recálculo das passagens no servidor Flask;
+
+- seleção de fuso horário e sugestões para regiões do Brasil;
+
+- cache das consultas e validação de coordenadas, fusos e satélites;
+
+- testes de núcleo e de API para as novas funções.
+
+As trilhas exibidas continuam sendo projeções terrestres pré-calculadas. Elas não representam posição ao vivo, trajetória aparente no céu ou garantia de visibilidade.
+
+## Estrutura
+
+```
+README.md                         apresentação geral e evolução do projeto
+fase1/                            primeiro MVP completo
+fase1/README.md                   documentação da Fase 1
+fase1/scripts/                    cálculo e geração do dataset inicial
+fase1/web/                        mapa web estático
+fase1/tests/                      testes do núcleo
+fase2/                            evolução completa da Fase 2
+fase2/README.md                   documentação da Fase 2
+fase2/server.py                   servidor Flask e APIs locais
+fase2/scripts/                   cálculo e geração dos dados
+fase2/web/                        interface com busca e cálculo dinâmico
+fase2/tests/                      testes do núcleo e da API
+assets/ftl-logo.png               logo usada neste README
+fase1.txt                         marcador da primeira fase
+```
+
+Cada pasta de fase é independente e possui seu próprio `README.md`, `requirements.txt`, configuração, código e testes. Para executar uma fase, entre na pasta correspondente e siga as instruções de instalação e execução descritas nela.
+
+## Validação atual
+
+A Fase 1 possui quatro testes automatizados. A Fase 2 possui onze testes automatizados, incluindo validação de coordenadas, fuso horário, seleção de satélites, busca manual e cálculo dinâmico para as coordenadas escolhidas.
+
+Os dados orbitais são obtidos da [CelesTrak](https://celestrak.org/). O mapa utiliza [Leaflet](https://leafletjs.com/) e cartografia do [OpenStreetMap](https://www.openstreetmap.org/). A busca da Fase 2 utiliza [Nominatim](https://nominatim.org/) e deve respeitar sua [política de uso](https://operations.osmfoundation.org/policies/nominatim/).
+
+## Limites e próximos passos
+
+Este repositório reúne as versões disponíveis das Fases 1 e 2. As etapas posteriores — como integração USB/serial com ESP32, possíveis notificações em hardware, recursos adicionais de visibilidade e implantação pública — devem ser tratadas como evoluções do projeto, não como parte deste pacote histórico.
+
+O protótipo não substitui uma previsão observacional completa. A qualidade dos resultados depende da época e da precisão dos elementos orbitais, e uma passagem geométrica acima do limite não garante que o satélite possa ser observado a olho nu.
+
+## Autor
+
+**Luiz Gustavo de Barros e Silva Santos**
+Future Tech Leaders Brasil — Space Tech Bootcamp 2026.
+
+## Fontes do programa
+
+- [Future Tech Leaders Brasil — e-book oficial](https://github.com/ftl-brazil-2026/ebook)
+
+- [Informações gerais do currículo](https://github.com/ftl-brazil-2026/ebook/blob/main/course-info/general-info.md)
+
+- [Agência Espacial Brasileira — Bootcamp de Tecnologias Espaciais](https://www.gov.br/aeb/pt-br/assuntos/noticias/inscricoes-abertas-para-o-bootcamp-de-tecnologias-espaciais-do-future-tech-leaders-programme)
