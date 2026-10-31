@@ -1,0 +1,1 @@
+O script build_dataset.py gera aqui o cache source_omm.json e o conjunto data/passes.json. A Fase 2 adiciona geocode_cache.json, cache local de buscas manuais de cidades. Os arquivos gerados são ignorados pelo Git; mantenha os caches locais e não os inclua em compartilhamentos sem necessidade.
