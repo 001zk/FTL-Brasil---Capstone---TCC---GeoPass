@@ -1,1 +1,0 @@
-O script build_dataset.py gera aqui o cache source_omm.json e o conjunto data/passes.json. Os arquivos gerados são ignorados pelo Git.
