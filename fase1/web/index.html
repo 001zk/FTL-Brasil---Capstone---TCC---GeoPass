@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GeoPass — passagens de satélites</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root { color-scheme: light; --ink:#142638; --muted:#526579; --blue:#27649b; --line:#d6e0e9; --bg:#f4f7fa; --panel:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    header { padding:18px 24px; background:#122b42; color:white; }
+    header h1 { margin:0; font-size:1.35rem; letter-spacing:.02em; }
+    header p { margin:4px 0 0; color:#d6e5f2; font-size:.92rem; }
+    main { max-width:1440px; margin:auto; padding:18px; display:grid; grid-template-columns:260px minmax(320px,1fr) 350px; gap:14px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; box-shadow:0 2px 10px #19344c0a; }
+    h2 { margin:0 0 12px; font-size:1rem; }
+    label { display:block; margin:10px 0 5px; color:var(--muted); font-size:.86rem; font-weight:650; }
+    select,button { width:100%; border:1px solid #bdcad6; border-radius:7px; background:white; color:var(--ink); padding:9px 10px; font:inherit; }
+    button { cursor:pointer; border-color:var(--blue); background:var(--blue); color:white; font-weight:650; }
+    button.secondary { background:#fff; color:var(--blue); }
+    #satelliteFilters { max-height:310px; overflow:auto; border:1px solid var(--line); border-radius:7px; padding:6px 9px; }
+    .sat-option { display:flex; align-items:flex-start; gap:8px; margin:5px 0; font-size:.85rem; }
+    .sat-option input { margin-top:4px; }
+    #map { height:510px; border-radius:8px; border:1px solid var(--line); }
+    .map-note,.meta,.fine { color:var(--muted); font-size:.8rem; }
+    .map-note { margin:9px 0 0; }
+    .meta { margin-top:9px; word-break:break-word; }
+    .warning { display:none; margin:10px 0 0; border-radius:7px; padding:9px; background:#fff4dc; color:#6b4900; font-size:.83rem; }
+    .pass-list { max-height:590px; overflow:auto; }
+    .pass-card { border:1px solid var(--line); border-left:4px solid #3980b4; border-radius:7px; padding:10px; margin:8px 0; }
+    .pass-card strong { display:block; }
+    .pass-card p { margin:5px 0; font-size:.86rem; }
+    .empty { padding:16px 6px; color:var(--muted); }
+    footer { max-width:1440px; margin:auto; padding:0 18px 20px; color:var(--muted); font-size:.78rem; }
+    @media(max-width:1000px) { main { grid-template-columns:230px minmax(300px,1fr); } .events { grid-column:1/-1; } .pass-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:8px; } }
+    @media(max-width:640px) { main { display:flex; flex-direction:column; } #map { height:380px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GeoPass</h1>
+    <p>Explore passagens orbitais calculadas para locais selecionados</p>
+  </header>
+  <main>
+    <section class="panel" aria-labelledby="filters-title">
+      <h2 id="filters-title">Consulta</h2>
+      <label for="locationSelect">Localidade</label>
+      <select id="locationSelect"><option>Carregando…</option></select>
+      <label>Satélites no mapa e na lista</label>
+      <div id="satelliteFilters" aria-live="polite">Aguardando dados…</div>
+      <p class="fine">Os resultados e as trilhas são gerados pelo script Python. Edite <code>config.json</code> para trocar as coordenadas.</p>
+      <button id="selectAll" class="secondary" type="button">Selecionar todos</button>
+      <div id="warning" class="warning" role="status"></div>
+      <div id="meta" class="meta"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="map-title">
+      <h2 id="map-title">Mapa terrestre</h2>
+      <div id="map" aria-label="Mapa com o local de observação e trilhas terrestres dos satélites"></div>
+      <p class="map-note">A linha mostra a projeção do satélite sobre a Terra. Ela não é a trajetória aparente no céu nem uma garantia de visibilidade.</p>
+    </section>
+
+    <section class="panel events" aria-labelledby="events-title">
+      <h2 id="events-title">Próximas passagens</h2>
+      <div id="passList" class="pass-list" aria-live="polite"></div>
+      <p class="fine">Limite geométrico configurado: <span id="threshold">—</span>. Horários apresentados no fuso da localidade.</p>
+    </section>
+  </main>
+  <footer>Dados orbitais: CelesTrak · Visualização cartográfica: OpenStreetMap. A previsão depende da época e qualidade dos elementos orbitais. Passagem geométrica não equivale a visibilidade a olho nu.</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+  (() => {
+    const palette = ['#d1495b','#00798c','#edae49','#30638e','#6a4c93','#438a5e','#d16d2d','#415a77','#b23a48','#4c956c'];
+    const map = L.map('map').setView([-15.8, -47.9], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    const layers = L.layerGroup().addTo(map);
+    let data = null;
+    let selectedLocation = null;
+    let selectedIds = new Set();
+
+    const byId = id => document.getElementById(id);
+    const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const dateText = (iso, zone) => new Intl.DateTimeFormat('pt-BR', {
+      day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone:zone
+    }).format(new Date(iso));
+    const location = () => data.locations.find(item => item.id === selectedLocation);
+
+    function chosenSatellites() {
+      return new Set([...document.querySelectorAll('.sat-check:checked')].map(el => el.value));
+    }
+    function setSatelliteFilters() {
+      const holder = byId('satelliteFilters');
+      const sats = data.satellites.slice().sort((a,b) => {
+        if (a.id === '25544') return -1;
+        if (b.id === '25544') return 1;
+        return a.name.localeCompare(b.name, 'pt-BR');
+      });
+      const defaults = new Set(sats.slice(0, Math.min(6, sats.length)).map(s => s.id));
+      if (sats.some(s => s.id === '25544')) defaults.add('25544');
+      selectedIds = defaults;
+      holder.innerHTML = sats.map(s => `
+        <label class="sat-option"><input class="sat-check" type="checkbox" value="${safe(s.id)}" ${defaults.has(s.id) ? 'checked' : ''}>
+        <span>${safe(s.name)} <span class="fine">(${safe(s.id)})</span></span></label>`).join('');
+      holder.querySelectorAll('.sat-check').forEach(el => el.addEventListener('change', render));
+    }
+    function splitAtDateLine(points) {
+      const segments = []; let segment = [];
+      for (const point of points) {
+        const next = [point.latitude, point.longitude];
+        if (segment.length && Math.abs(next[1] - segment[segment.length - 1][1]) > 180) {
+          if (segment.length > 1) segments.push(segment);
+          segment = [];
+        }
+        segment.push(next);
+      }
+      if (segment.length > 1) segments.push(segment);
+      return segments;
+    }
+    function renderMap(loc, ids) {
+      layers.clearLayers();
+      map.setView([loc.latitude, loc.longitude], 4);
+      L.marker([loc.latitude, loc.longitude]).addTo(layers).bindPopup(`<strong>${safe(loc.name)}</strong><br>Local de observação`);
+      const tracks = data.tracks.filter(track => ids.has(track.satellite_id));
+      tracks.forEach((track, i) => splitAtDateLine(track.points).forEach(segment => {
+        L.polyline(segment, {color:palette[i % palette.length], weight:2.5, opacity:.8})
+          .bindTooltip(`${safe(track.satellite_name)} (${safe(track.satellite_id)})`)
+          .addTo(layers);
+      }));
+    }
+    function renderPasses(loc, ids) {
+      const passes = data.passes.filter(p => p.location_id === loc.id && ids.has(p.satellite_id))
+        .sort((a,b) => a.start_utc.localeCompare(b.start_utc));
+      const list = byId('passList');
+      if (!passes.length) {
+        list.innerHTML = '<div class="empty">Nenhuma passagem acima do limiar nesta janela e para os filtros escolhidos.</div>';
+        return;
+      }
+      list.innerHTML = passes.map(p => `
+        <article class="pass-card">
+          <strong>${safe(p.satellite_name)}</strong>
+          <p>${dateText(p.start_utc, loc.timezone)} – ${dateText(p.end_utc, loc.timezone)}</p>
+          <p>Máximo: ${Number(p.max_elevation_deg).toFixed(1)}° · azimute no máximo: ${Number(p.azimuth_at_peak_deg).toFixed(1)}°</p>
+          <p class="fine">Época dos elementos: ${dateText(p.epoch_utc, 'UTC')} UTC</p>
+        </article>`).join('');
+    }
+    function render() {
+      if (!data) return;
+      const loc = location();
+      const ids = chosenSatellites();
+      renderMap(loc, ids);
+      renderPasses(loc, ids);
+    }
+    async function start() {
+      try {
+        const response = await fetch('../data/passes.json', {cache:'no-store'});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        data = await response.json();
+        if (!data.locations?.length || !data.satellites?.length) throw new Error('O arquivo não tem localidades ou satélites.');
+        const select = byId('locationSelect');
+        select.innerHTML = data.locations.map(loc => `<option value="${safe(loc.id)}">${safe(loc.name)}</option>`).join('');
+        selectedLocation = data.locations[0].id;
+        select.addEventListener('change', () => { selectedLocation = select.value; render(); });
+        byId('selectAll').addEventListener('click', () => {
+          const checks = [...document.querySelectorAll('.sat-check')];
+          const allChecked = checks.every(check => check.checked);
+          checks.forEach(check => { check.checked = !allChecked; });
+          render();
+        });
+        setSatelliteFilters();
+        byId('threshold').textContent = `${Number(data.min_elevation_deg).toFixed(1)}°`;
+        byId('meta').textContent = `Gerado em ${dateText(data.generated_at_utc, 'UTC')} UTC · ${data.satellites.length} satélites`;
+        const ageHours = (Date.now() - new Date(data.generated_at_utc).getTime()) / 3600000;
+        if (ageHours > 24) {
+          byId('warning').style.display = 'block';
+          byId('warning').textContent = 'Atenção: este conjunto de previsões foi gerado há mais de 24 horas. Rode novamente o script Python.';
+        }
+        if (data.warnings?.length) {
+          byId('warning').style.display = 'block';
+          byId('warning').textContent += (byId('warning').textContent ? ' ' : '') + `${data.warnings.length} registro(s) orbital(is) foram ignorados; veja o log do script.`;
+        }
+        render();
+      } catch (error) {
+        byId('passList').innerHTML = `<div class="empty">Não consegui carregar <code>data/passes.json</code>: ${safe(error.message)}. Rode <code>py scripts\\build_dataset.py</code> e abra esta página por um servidor local.</div>`;
+      }
+    }
+    start();
+  })();
+  </script>
+</body>
+</html>

@@ -26,7 +26,7 @@ Uma passagem indicada pelo GeoPass é geométrica: o satélite ultrapassa o limi
 
 ### Fase 1 — mapa e previsões iniciais
 
-A primeira versão calcula previsões para localidades configuradas e grava os resultados em um conjunto de dados JSON. A interface Leaflet mostra as localidades, as trilhas terrestres dos satélites, filtros e cartões com os horários previstos. Esta fase contém quatro testes automatizados para o agrupamento dos eventos orbitais.
+A primeira versão calcula previsões para localidades configuradas e grava os resultados em um conjunto de dados JSON. A interface Leaflet mostra localidades, trilhas terrestres, filtros e horários previstos. A suíte contém quatro testes automatizados para o agrupamento dos eventos orbitais.
 
 ### Fase 2 — busca geográfica e cálculo dinâmico
 
@@ -34,7 +34,7 @@ A segunda versão acrescenta um servidor Flask, busca manual de cidades com Nomi
 
 ### Fase 3 — rastreador orbital simulado
 
-A terceira versão mantém as funções da Fase 2 e acrescenta a visualização de uma trilha terrestre para um satélite selecionado. O usuário pode mover um marcador ao longo da trilha com um controle de tempo, reproduzir ou pausar a simulação, enquadrar a rota completa e retornar ao local do observador. O painel mostra o instante simulado em UTC e no fuso escolhido, além do subponto terrestre em latitude e longitude.
+A terceira versão acrescenta a visualização da trilha terrestre de um satélite selecionado. O usuário pode mover um marcador com um controle de tempo, reproduzir ou pausar a simulação, enquadrar a rota completa e retornar ao local do observador. O painel mostra o instante simulado em UTC e no fuso escolhido, além do subponto terrestre em latitude e longitude.
 
 A trilha é calculada previamente a partir dos elementos orbitais disponíveis quando o dataset é gerado, com amostragem de dois minutos por padrão. **O rastreador não é ao vivo**: o marcador percorre pontos pré-calculados e não indica a posição atual do satélite. A Fase 3 mantém onze testes de núcleo e API; seus controles visuais também são verificados manualmente.
 
@@ -42,30 +42,37 @@ A trilha é calculada previamente a partir dos elementos orbitais disponíveis q
 
 A quarta versão acrescenta uma ponte pySerial no servidor Flask local e um firmware PlatformIO para o ESP32. A pessoa seleciona uma passagem e uma porta; o computador envia uma mensagem `NEXT` com horários UTC e elevação máxima. O firmware valida os campos, imprime a passagem no Monitor Serial e responde com `ACK`.
 
-O firmware foi carregado e testado durante o desenvolvimento em uma placa ESP32-WROOM-32D DevKitC. Os registros compartilhados mostraram `READY|GEOPASS1` na inicialização e uma confirmação `ACK|1|25544|OK` após envio pela COM3. A suíte automatizada da Fase 4 contém vinte testes; os testes seriais automatizados simulam a comunicação e não substituem a validação física.
+O firmware foi carregado e testado durante o desenvolvimento em uma placa ESP32-WROOM-32D DevKitC. Os registros compartilhados mostraram `READY|GEOPASS1` na inicialização e `ACK|1|25544|OK` após envio pela COM3. A suíte automatizada da Fase 4 contém vinte testes; os testes seriais simulam a comunicação e não substituem a validação física.
 
-Esta integração é iniciada pela pessoa e depende do computador conectado à placa executar o Flask local. O ESP32 não calcula as órbitas nem aciona LED, buzzer ou display nesta versão. A fase usa pySerial no servidor; **não implementa Web Serial no navegador** nem permite que um site hospedado no Vercel acesse diretamente a USB do visitante.
+### Fase 5 — Web Serial e preparação para Vercel
+
+A quinta versão move a comunicação com a placa para a **Web Serial API no próprio navegador**. A pessoa autoriza a porta em uma ação explícita, envia o resumo da passagem e recebe o `ACK` sem exigir que o servidor hospedado acesse a USB do computador. A conexão física pelo navegador foi validada durante o desenvolvimento.
+
+A fase também adiciona configuração para runtime Flask no Vercel e um script que gera a interface e os dados iniciais em `public/`. O build local foi executado com sucesso e a suíte contém 23 testes, incluindo tratamento do filesystem somente leitura. **O site ainda não está publicado**: um deploy remoto precisa ser iniciado e validado na conta Vercel do autor.
 
 ## Estrutura do repositório
 
 ```text
 README.md                         visão geral, bootcamp e evolução
+RELATORIO_TESTES.txt              nomes e explicação dos testes executados
+VERCEL_TESTE.md                    checklist de configuração e teste do preview
 FTL Brasil Logo.png               logo referenciada neste README
 fase1/                            mapa e previsões iniciais
 fase2/                            busca geográfica e cálculo dinâmico
 fase3/                            mapa com simulação de rota terrestre
 fase4/                            integração serial local com ESP32/PlatformIO
+fase5/                            Web Serial e preparação de build Vercel
 ```
 
-Cada pasta de fase contém seus próprios arquivos, testes, dependências e README com instruções de execução. Para instalar e executar uma versão, entre na pasta desejada e siga o respectivo `README.md`.
+Cada pasta contém seus arquivos, testes, dependências e README com instruções da respectiva etapa. Para executar uma versão, entre na pasta desejada e siga o `README.md` correspondente.
 
 ## Tecnologias e fontes de dados
 
-O projeto utiliza Python, Skyfield/SGP4 e Flask no backend, JavaScript e Leaflet na interface cartográfica, e C++/Arduino com PlatformIO no firmware da Fase 4. Os elementos orbitais vêm da [CelesTrak](https://celestrak.org/). A busca por cidades usa o [Nominatim](https://nominatim.org/) e deve respeitar sua [política de uso](https://operations.osmfoundation.org/policies/nominatim/). O mapa usa cartografia do [OpenStreetMap](https://www.openstreetmap.org/).
+O projeto utiliza Python, Skyfield/SGP4 e Flask no backend, JavaScript e Leaflet na interface cartográfica e C++/Arduino com PlatformIO no firmware. Os elementos orbitais vêm da [CelesTrak](https://celestrak.org/). A busca por cidades usa o [Nominatim](https://nominatim.org/) e deve respeitar sua [política de uso](https://operations.osmfoundation.org/policies/nominatim/). O mapa usa cartografia do [OpenStreetMap](https://www.openstreetmap.org/).
 
-## Limites deste pacote
+## Limites do protótipo
 
-Este repositório reúne as **Fases 1 a 4**. A Fase 4 utiliza pySerial no servidor local e não inclui Web Serial no navegador, implantação pública no Vercel nem display OLED. As previsões dependem da época e da qualidade dos elementos orbitais. Uma passagem geométrica não equivale a uma previsão completa de visibilidade óptica.
+Este repositório reúne as **Fases 1 a 5**. A integração ESP32 é opcional; nesta versão ela confirma e imprime o resumo recebido, sem OLED, LED ou buzzer. As previsões são geométricas, e a trilha é uma simulação pré-calculada. O build de Vercel foi testado localmente, mas este pacote não contém URL de produção nem comprova um deploy remoto.
 
 ## Autor
 
