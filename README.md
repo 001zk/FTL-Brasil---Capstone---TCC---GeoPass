@@ -1,0 +1,80 @@
+<p align="center">
+  <img src="FTL%20Brasil%20Logo.png" alt="Future Tech Leaders" width="720">
+</p>
+
+<h1 align="center">GeoPass</h1>
+
+<p align="center">
+  WebGIS para prever, consultar e visualizar passagens de satélites sobre locais escolhidos.
+</p>
+
+## Sobre o Space Tech Bootcamp
+
+O GeoPass é o projeto de capstone do **Future Tech Leaders Brasil 2026 — Space Tech Bootcamp**, iniciativa de capacitação online e gratuita em tecnologias espaciais realizada no Brasil pela Agência Espacial Brasileira (AEB), pelo Programa das Nações Unidas para o Desenvolvimento (PNUD), pelo UNDP Istanbul International Center for Private Sector in Development (UNDP ICPSD) e pelo SDG AI Lab. O [e-book oficial](https://github.com/ftl-brazil-2026/ebook) reúne conteúdos de GIS e sensoriamento remoto, Machine Learning, Deep Learning e aplicações geoespaciais. A [apresentação da AEB](https://www.gov.br/aeb/pt-br/assuntos/noticias/inscricoes-abertas-para-o-bootcamp-de-tecnologias-espaciais-do-future-tech-leaders-programme) traz informações institucionais sobre a formação.
+
+O projeto se relaciona principalmente ao eixo de dados geoespaciais do programa: combina uma localização na Terra com dados orbitais públicos e previsões temporais, apresentando o resultado em um mapa interativo.
+
+## O problema que o GeoPass aborda
+
+Elementos orbitais são publicados em formatos técnicos e nem sempre são simples de relacionar a uma pergunta prática: **quando um satélite passará sobre a minha cidade ou sobre um ponto específico?** O GeoPass busca tornar essa informação mais acessível ao combinar localização, tempo e propagação orbital em uma interface cartográfica.
+
+O sistema usa elementos orbitais OMM da CelesTrak e o modelo SGP4 por meio do Skyfield. Para um observador escolhido, calcula eventos de subida, ponto de maior elevação e descida. A aplicação também apresenta elevação máxima, azimute e época dos elementos utilizados.
+
+Uma passagem indicada pelo GeoPass é geométrica: o satélite ultrapassa o limite de elevação configurado. Isso não garante visibilidade a olho nu, pois iluminação do satélite, condições do céu e obstáculos locais também influenciam.
+
+## Evolução do projeto
+
+### Fase 1 — mapa e previsões iniciais
+
+A primeira versão calcula previsões para localidades configuradas e grava os resultados em um conjunto de dados JSON. A interface Leaflet mostra localidades, trilhas terrestres, filtros e horários previstos. A suíte contém quatro testes automatizados para o agrupamento dos eventos orbitais.
+
+### Fase 2 — busca geográfica e cálculo dinâmico
+
+A segunda versão acrescenta um servidor Flask, busca manual de cidades com Nominatim e recálculo para coordenadas encontradas ou escolhidas por clique no mapa. Inclui escolha de fuso horário, sugestões regionais para o Brasil, cache de geocodificação e validações de entrada. A suíte contém onze testes de núcleo e API.
+
+### Fase 3 — rastreador orbital simulado
+
+A terceira versão acrescenta a visualização da trilha terrestre de um satélite selecionado. O usuário pode mover um marcador com um controle de tempo, reproduzir ou pausar a simulação, enquadrar a rota completa e retornar ao local do observador. O painel mostra o instante simulado em UTC e no fuso escolhido, além do subponto terrestre em latitude e longitude.
+
+A trilha é calculada previamente a partir dos elementos orbitais disponíveis quando o dataset é gerado, com amostragem de dois minutos por padrão. **O rastreador não é ao vivo**: o marcador percorre pontos pré-calculados e não indica a posição atual do satélite. A Fase 3 mantém onze testes de núcleo e API; seus controles visuais também são verificados manualmente.
+
+### Fase 4 — integração serial local com ESP32
+
+A quarta versão acrescenta uma ponte pySerial no servidor Flask local e um firmware PlatformIO para o ESP32. A pessoa seleciona uma passagem e uma porta; o computador envia uma mensagem `NEXT` com horários UTC e elevação máxima. O firmware valida os campos, imprime a passagem no Monitor Serial e responde com `ACK`.
+
+O firmware foi carregado e testado durante o desenvolvimento em uma placa ESP32-WROOM-32D DevKitC. Os registros compartilhados mostraram `READY|GEOPASS1` na inicialização e `ACK|1|25544|OK` após envio pela COM3. A suíte automatizada da Fase 4 contém vinte testes; os testes seriais simulam a comunicação e não substituem a validação física.
+
+### Fase 5 — Web Serial e preparação para Vercel
+
+A quinta versão move a comunicação com a placa para a **Web Serial API no próprio navegador**. A pessoa autoriza a porta em uma ação explícita, envia o resumo da passagem e recebe o `ACK` sem exigir que o servidor hospedado acesse a USB do computador. A conexão física pelo navegador foi validada durante o desenvolvimento.
+
+A fase também adiciona configuração para runtime Flask no Vercel e um script que gera a interface e os dados iniciais em `public/`. A interface da Fase 5 usa a identidade escura Scientific Atlas, com cinco vistas responsivas, camadas cartográficas e créditos visíveis; veja as capturas e instruções no [README da Fase 5](fase5/README.md). O build local foi executado com sucesso e a suíte contém **25 testes**, incluindo tratamento do filesystem somente leitura e serving do manifesto/assets. **O site ainda não está publicado**: um deploy remoto precisa ser iniciado e validado na conta Vercel do autor.
+
+## Estrutura do repositório
+
+```text
+README.md                         visão geral, bootcamp e evolução
+RELATORIO_TESTES.txt              nomes e explicação dos testes executados
+VERCEL_TESTE.md                    checklist de configuração e teste do preview
+FTL Brasil Logo.png               logo referenciada neste README
+fase1/                            mapa e previsões iniciais
+fase2/                            busca geográfica e cálculo dinâmico
+fase3/                            mapa com simulação de rota terrestre
+fase4/                            integração serial local com ESP32/PlatformIO
+fase5/                            Web Serial e preparação de build Vercel
+```
+
+Cada pasta contém seus arquivos, testes, dependências e README com instruções da respectiva etapa. Para executar uma versão, entre na pasta desejada e siga o `README.md` correspondente.
+
+## Tecnologias e fontes de dados
+
+O projeto utiliza Python, Skyfield/SGP4 e Flask no backend, JavaScript e Leaflet na interface cartográfica e C++/Arduino com PlatformIO no firmware. Os elementos orbitais vêm da [CelesTrak](https://celestrak.org/). A busca por cidades usa o [Nominatim](https://nominatim.org/) e deve respeitar sua [política de uso](https://operations.osmfoundation.org/policies/nominatim/). A Fase 5 oferece [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) com overlay de limites/rótulos e [OpenStreetMap](https://www.openstreetmap.org/) como alternativa; a atribuição permanece visível. Os provedores têm termos e disponibilidade próprios; consulte a [pesquisa cartográfica](fase5/artifacts/research-map-layer.md).
+
+## Limites do protótipo
+
+Este repositório reúne as **Fases 1 a 5**. A integração ESP32 é opcional; nesta versão ela confirma e imprime o resumo recebido, sem OLED, LED ou buzzer. As previsões são geométricas, e a trilha é uma simulação pré-calculada, não ao vivo. Os tiles externos são destinados à demonstração acadêmica não comercial e estão sujeitos aos termos dos provedores. O build de Vercel foi testado localmente, mas este pacote não contém URL de produção nem comprova um deploy remoto.
+
+## Autor
+
+**Luiz Gustavo de Barros e Silva Santos**  
+Future Tech Leaders Brasil — Space Tech Bootcamp 2026.

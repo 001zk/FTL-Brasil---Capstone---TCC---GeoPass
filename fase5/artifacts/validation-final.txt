@@ -1,0 +1,65 @@
+GeoPass — Scientific Atlas — validação final
+Executado em: 2026-11-11T23:34:09Z
+
+=== Testes automatizados ===
+test_brazil_timezone_suggestions ... ok
+test_city_search_requires_manual_query ... ok
+test_cloud_serial_routes_direct_user_to_browser_connection ... ok
+test_dynamic_passes_use_the_selected_coordinates ... ok
+test_lists_serial_ports ... ok
+test_preview_serves_frontend_assets_and_route_manifest ... ok
+test_rejects_invalid_coordinates ... ok
+test_rejects_more_than_twelve_satellites ... ok
+test_rejects_unknown_timezone ... ok
+test_requires_a_satellite_selection ... ok
+test_serial_send_rejects_unconnected_port ... ok
+test_serial_send_transmits_selected_pass_and_returns_ack ... ok
+test_incomplete_passes_are_not_published ... ok
+test_multiple_culminations_belong_to_same_pass ... ok
+test_one_complete_pass ... ok
+test_two_passes ... ok
+test_ack_must_match_protocol_version_and_satellite ... ok
+test_builds_compact_ascii_command ... ok
+test_normalizes_zero_offset_utc ... ok
+test_rejects_impossible_elevation_and_event_order ... ok
+test_rejects_invalid_id_or_injection ... ok
+test_rejects_non_utc_and_malformed_timestamps ... ok
+test_build_copies_page_manifest_and_nested_assets ... ok
+test_geocode_returns_results_if_runtime_cannot_write_cache ... ok
+test_omm_fetch_returns_fresh_data_if_runtime_cannot_write_cache ... ok
+
+Ran 25 tests in 0.035s — OK (reproduzido na cópia consolidada das cinco fases)
+
+=== Build Vercel local ===
+Vercel build OK: 19 satélites, 153 passagens, 3 localidades.
+
+=== Checagens estáticas ===
+node --check web/assets/app.js: OK
+python -m compileall -q server.py scripts tests: OK
+
+=== Smoke tests HTTP na prévia Flask (porta 3000) ===
+GET / — 200
+GET /manus-routes.json — 200
+GET /assets/app.css — 200
+GET /assets/app.js — 200
+GET /data/passes.json — 200
+
+=== Integridade do build e compatibilidade DOM ===
+`public/index.html`, `public/assets/app.css` e `public/assets/app.js` coincidem byte a byte com as fontes.
+Manifesto JSON válido; 1 rota declarada: `/`.
+Os IDs consumidos por `app.js` estão presentes no HTML: 74/74.
+
+=== Capturas visuais da prévia gerenciada ===
+Mapa — desktop: viewport/PNG 1648x928.
+Passagens — desktop: viewport 1648x928; PNG 1648x1520.
+Rastreador — desktop: viewport 1648x928; PNG 1648x1224.
+ESP32 — desktop: viewport/PNG 1648x928.
+Metodologia — desktop: viewport/PNG 1648x928.
+Mapa — tablet: viewport 768x1024; PNG 768x1304.
+Mapa — celular: viewport 390x844; PNG 390x1074.
+Navegação das cinco vistas e alternância de trilhas/OSM/Esri verificadas na prévia; créditos cartográficos acompanham a camada selecionada.
+
+=== Limitações desta rodada ===
+Não foi executado preview remoto nem deploy Vercel.
+O ESP32 físico não foi reconectado; os testes seriais acima são automatizados/simulados.
+Os tiles Esri/OSM são serviços externos best-effort, sujeitos a termos próprios; ver `artifacts/research-map-layer.md`.

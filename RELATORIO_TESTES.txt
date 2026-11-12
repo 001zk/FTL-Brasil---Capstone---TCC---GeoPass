@@ -1,0 +1,116 @@
+GEOPASS — RELATÓRIO DE TESTES
+Pacote: Fases 1 a 5
+
+RESUMO
+
+Foram executados 71 testes automatizados com Python unittest, diretamente nas pastas do pacote consolidado. Todos passaram:
+
+- Fase 1: 4 testes
+- Fase 2: 11 testes
+- Fase 3: 11 testes
+- Fase 4: 20 testes
+- Fase 5: 25 testes
+
+Além dos 71 testes, foram executados separadamente o build Vercel local e verificações HTTP. Os arquivos temporários gerados foram removidos depois porque são saídas de build, não fontes do repositório.
+
+FASE 1 — 4 TESTES
+
+1. test_incomplete_passes_are_not_published
+   Confere que eventos incompletos de uma passagem não são publicados como passagem válida.
+2. test_multiple_culminations_belong_to_same_pass
+   Confere o agrupamento de mais de um evento de culminação na mesma passagem.
+3. test_one_complete_pass
+   Confere o agrupamento de uma passagem completa.
+4. test_two_passes
+   Confere que duas passagens completas são separadas corretamente.
+
+FASES 2 E 3 — 11 TESTES EM CADA FASE
+
+Testes da API e da busca geográfica:
+
+- test_brazil_timezone_suggestions: verifica sugestões de fuso horário para localidades brasileiras.
+- test_city_search_requires_manual_query: verifica que a busca exige uma consulta manual, em vez de pesquisar automaticamente.
+- test_dynamic_passes_use_the_selected_coordinates: verifica o cálculo usando as coordenadas escolhidas.
+- test_rejects_invalid_coordinates: rejeita latitude ou longitude fora dos limites válidos.
+- test_rejects_more_than_twelve_satellites: rejeita seleções acima do limite de 12 satélites.
+- test_rejects_unknown_timezone: rejeita fusos horários não reconhecidos.
+- test_requires_a_satellite_selection: rejeita cálculo sem satélite selecionado.
+
+Também são executados os quatro testes do núcleo listados na Fase 1, totalizando 11 testes por fase.
+
+FASE 4 — 20 TESTES
+
+Inclui os quatro testes do núcleo e os seguintes testes de API/serial:
+
+- test_brazil_timezone_suggestions: sugestões de fuso horário brasileiro.
+- test_city_search_requires_manual_query: consulta de cidade somente após solicitação explícita.
+- test_dynamic_passes_use_the_selected_coordinates: cálculo para as coordenadas escolhidas.
+- test_lists_serial_ports: listagem de portas seriais disponíveis.
+- test_rejects_invalid_coordinates: validação de coordenadas.
+- test_rejects_more_than_twelve_satellites: limite de satélites por consulta.
+- test_rejects_unknown_timezone: validação de fuso horário.
+- test_requires_a_satellite_selection: exige seleção de satélite.
+- test_serial_send_rejects_unconnected_port: rejeita envio para porta não conectada.
+- test_serial_send_transmits_selected_pass_and_returns_ack: simula o envio da passagem selecionada e valida o ACK.
+
+Testes específicos do protocolo ESP32:
+
+- test_ack_must_match_protocol_version_and_satellite: exige que o ACK corresponda à versão do protocolo e ao satélite.
+- test_builds_compact_ascii_command: confere a montagem da mensagem serial ASCII.
+- test_normalizes_zero_offset_utc: normaliza timestamp UTC com deslocamento zero.
+- test_rejects_impossible_elevation_and_event_order: rejeita elevação impossível e eventos fora de ordem.
+- test_rejects_invalid_id_or_injection: rejeita ID inválido ou conteúdo de injeção.
+- test_rejects_non_utc_and_malformed_timestamps: rejeita timestamps malformados ou que não estejam em UTC.
+
+FASE 5 — 25 TESTES
+
+Inclui os 20 testes da Fase 4 e cinco verificações adicionais:
+
+- test_cloud_serial_routes_direct_user_to_browser_connection: verifica que, no runtime em nuvem, a comunicação serial direciona a pessoa para conectar pelo navegador, em vez de tentar acessar a USB do servidor.
+- test_geocode_returns_results_if_runtime_cannot_write_cache: verifica que a busca geográfica ainda pode retornar resultados quando o filesystem do runtime não permite gravar o cache.
+- test_omm_fetch_returns_fresh_data_if_runtime_cannot_write_cache: verifica que dados OMM recém-consultados podem ser usados quando não é possível persistir o cache.
+- test_preview_serves_frontend_assets_and_route_manifest: verifica que a prévia Flask serve CSS/JavaScript e o manifesto de rotas.
+- test_build_copies_page_manifest_and_nested_assets: verifica que o build inclui HTML, manifesto, dados e assets aninhados em `public/`.
+
+BUILD VERCEL — VERIFICAÇÃO SEPARADA
+
+Foi executado `python scripts/vercel_build.py` na Fase 5. Em uma cópia limpa, `uv sync --no-dev` instalou as dependências declaradas no `pyproject.toml`; Flask, Skyfield e pySerial foram importados com sucesso. O build gerou a página, assets, manifesto e `public/data/passes.json`. Na execução registrada em 11 de novembro de 2026, foram gerados dados para 19 satélites, 153 passagens e 3 localidades. Esses números variam conforme os dados orbitais atuais.
+
+As 25 verificações automatizadas da Fase 5 também passaram nesse ambiente `uv` limpo. Essa reprodução testa o modo de instalação que aparece no log do Vercel, mas não comprova que houve publicação ou teste de um deploy remoto.
+
+ROTAS HTTP LOCAIS — VERIFICAÇÃO SEPARADA
+
+Com o cliente de testes Flask, as verificações abaixo passaram:
+
+- `GET /`: HTTP 200 e conteúdo HTML da interface.
+- `GET /data/passes.json`: HTTP 200 e JSON com satélites e localidades.
+- `GET /assets/app.css`, `/assets/app.js` e `/manus-routes.json`: HTTP 200 com assets e manifesto.
+- `POST /api/geocode` com consulta inválida: HTTP 400 de validação.
+- `POST /api/passes` com coordenadas inválidas: HTTP 400 de validação.
+- Com `VERCEL=1`, `GET /api/esp32/ports` e `POST /api/esp32/send`: HTTP 501 explicando que a função na nuvem não acessa a USB local.
+
+Essas verificações confirmam as rotas Flask e os arquivos gerados no ambiente local. Elas não simulam a CDN nem o roteamento real do Vercel. Não houve preview remoto nem URL pública nesta entrega; as URLs ainda precisam ser testadas após configurar o projeto Vercel.
+
+ESP32 FÍSICO — EVIDÊNCIA SEPARADA
+
+Os testes automatizados de serial usam simulações e não acessam fisicamente uma placa. Separadamente, durante o desenvolvimento, foi registrado o teste com uma placa ESP32-WROOM-32D DevKitC: o navegador conectou pela COM3 e a aplicação recebeu `ACK|1|25544|OK`. Esse teste físico foi relatado durante o desenvolvimento e não foi repetido durante a execução automatizada deste relatório.
+
+COMO REPETIR OS TESTES NO WINDOWS POWERSHELL
+
+Abra o PowerShell na pasta raiz do repositório, ative/prepare o ambiente Python e instale as dependências de cada fase conforme o README correspondente. Depois execute:
+
+$fases = "fase1", "fase2", "fase3", "fase4", "fase5"
+foreach ($fase in $fases) {
+    Write-Host "--- $fase ---"
+    Push-Location $fase
+    python -m unittest discover -s tests -v
+    $resultado = $LASTEXITCODE
+    Pop-Location
+    if ($resultado -ne 0) { throw "Testes falharam em $fase" }
+}
+
+Para repetir somente o build estático da Fase 5, entre em `fase5` e execute:
+
+python scripts/vercel_build.py
+
+Esse build precisa de acesso à internet para consultar os dados orbitais. Ele gera arquivos temporários em `fase5/public/` e em `fase5/data/`, que não precisam ser incluídos no Git.

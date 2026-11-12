@@ -1,0 +1,20 @@
+[project]
+name = "geopass"
+version = "0.1.0"
+description = "Geospatial satellite pass prediction and cartographic visualization"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "skyfield>=1.49,<2.0",
+    "Flask>=3.0,<4.0",
+    "tzdata>=2025.2",
+    "pyserial>=3.5,<4.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.vercel]
+entrypoint = "server:app"
+
+[tool.vercel.scripts]
+build = "python scripts/vercel_build.py"

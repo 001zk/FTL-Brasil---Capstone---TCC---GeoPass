@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101716">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="description" content="GeoPass — inteligência orbital e cartografia de passagens de satélites.">
+  <title>GeoPass — Orbital Intelligence</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://server.arcgisonline.com">
+  <link rel="preconnect" href="https://services.arcgisonline.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Pular para o painel</a>
+
+  <header class="site-header">
+    <div class="brand-lockup">
+      <a class="brand" href="/" aria-label="GeoPass, início">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" focusable="false">
+            <circle class="brand-planet" cx="23" cy="24" r="13"></circle>
+            <ellipse class="brand-orbit" cx="23" cy="24" rx="22" ry="8" transform="rotate(-27 23 24)"></ellipse>
+            <circle class="brand-core" cx="23" cy="24" r="2.5"></circle>
+          </svg>
+        </span>
+        <span class="brand-copy"><strong>GeoPass</strong><small>ORBITAL INTELLIGENCE</small></span>
+      </a>
+    </div>
+
+    <nav class="main-nav" aria-label="Áreas do GeoPass" role="tablist">
+      <button class="nav-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="view-map" data-view="map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z"></path><path d="M9 4v14m6-12v14"></path></svg><span>Mapa</span>
+      </button>
+      <button class="nav-tab" type="button" role="tab" aria-selected="false" aria-controls="view-passes" data-view="passes">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span>Passagens</span>
+      </button>
+      <button class="nav-tab" type="button" role="tab" aria-selected="false" aria-controls="view-tracker" data-view="tracker">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="m12 4 2 5-2 3-2-3 2-5Zm0 8 5 2-5 2-5-2 5-2Z"></path></svg><span>Rastreador</span>
+      </button>
+      <button class="nav-tab" type="button" role="tab" aria-selected="false" aria-controls="view-esp32" data-view="esp32">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect><path d="M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3M9 9h6v6H9z"></path></svg><span>ESP32</span>
+      </button>
+      <button class="nav-tab" type="button" role="tab" aria-selected="false" aria-controls="view-methodology" data-view="methodology">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21V5.5Z"></path><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h8m-8 4h6"></path></svg><span>Metodologia</span>
+      </button>
+    </nav>
+
+    <div class="header-status" aria-label="Estado dos dados orbitais">
+      <span class="source-state"><i id="dataIndicator" class="status-dot"></i><span>Dados: CelesTrak</span></span>
+      <span class="header-divider" aria-hidden="true"></span>
+      <span class="updated-state">Atualizado: <time id="dataUpdatedAt">—</time> UTC</span>
+      <span class="settings-mark" title="Sem painel de configurações nesta versão" aria-label="Configurações indisponíveis">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"></path><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.4.8l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.4-.8l-1.7.6-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.7l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.4-.8l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.4.8l1.7-.6 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.7Z" transform="translate(-1 -1)"></path></svg>
+      </span>
+      <span id="summaryDataStatus" class="sr-only">VERIFICANDO</span>
+      <span id="summaryDataAge" class="sr-only">—</span>
+    </div>
+  </header>
+
+  <section class="search-dock" aria-label="Busca de local e fuso horário">
+    <div class="search-main">
+      <form id="cityForm" class="city-search">
+        <label class="sr-only" for="cityQuery">Buscar cidade ou local</label>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg>
+        <input id="cityQuery" type="search" minlength="2" maxlength="120" placeholder="Buscar cidade ou local..." autocomplete="off" required>
+        <button id="searchButton" class="search-submit" type="submit">Buscar</button>
+      </form>
+      <div id="searchStatus" class="search-status" role="status" aria-live="polite"></div>
+      <div id="searchResultsPanel" class="search-results-panel" hidden>
+        <label for="searchResults">Resultados da busca</label>
+        <select id="searchResults" disabled><option value="">Busque uma cidade primeiro</option></select>
+        <button id="useSearchResult" class="button button-primary" type="button" disabled>Calcular neste local</button>
+      </div>
+    </div>
+    <div class="timezone-control">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"></path></svg>
+      <label class="sr-only" for="timeZoneSelect">Fuso horário para exibição</label>
+      <select id="timeZoneSelect">
+        <option value="America/Noronha">UTC−02 (FNT)</option>
+        <option value="America/Sao_Paulo">UTC−03 (BRT)</option>
+        <option value="America/Manaus">UTC−04 (AMT)</option>
+        <option value="America/Rio_Branco">UTC−05 (ACT)</option>
+        <option value="UTC">UTC</option>
+      </select>
+      <span class="select-caret" aria-hidden="true">⌄</span>
+    </div>
+  </section>
+
+  <main id="workspace" class="workspace-shell">
+    <section id="view-map" class="app-view map-view" role="tabpanel" aria-label="Mapa orbital">
+      <button id="mobileControlsToggle" class="mobile-controls-toggle" type="button" aria-controls="mapSidebar" aria-expanded="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path><circle cx="8" cy="6" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="12" cy="18" r="1.5"></circle></svg>
+        <span class="mobile-controls-copy"><strong>Controles do mapa</strong><small>Camadas · satélites · local</small></span>
+        <span id="mobileControlsToggleAction" class="mobile-controls-action">Recolher</span>
+      </button>
+      <details id="mapSidebar" class="map-sidebar panel-surface" aria-label="Camadas, local e satélites" open>
+        <summary class="sidebar-heading">
+          <h1>Camadas</h1>
+          <span class="collapse-mark" aria-hidden="true">⌃</span>
+        </summary>
+        <div class="layer-list">
+          <label class="layer-toggle"><input id="layerSelectedTrack" type="checkbox" checked><span class="layer-swatch swatch-selected"></span><span>Trajetórias dos satélites</span></label>
+          <label class="layer-toggle"><input id="layerObserver" type="checkbox" checked><span class="observer-swatch"><i></i></span><span>Local do observador</span></label>
+          <label class="layer-toggle"><input id="layerOtherTracks" type="checkbox" checked><span class="layer-swatch swatch-other"></span><span>Outras trilhas</span></label>
+          <div class="base-layer-row">
+            <span class="base-thumb" aria-hidden="true"><svg viewBox="0 0 36 24"><path d="M0 15 8 9l7 5 7-11 7 4 7 9-8 6-9-5-10 5Z"></path></svg></span>
+            <label for="baseMapSelect">Mapa Base</label>
+            <select id="baseMapSelect" aria-label="Camada cartográfica">
+              <option value="imagery">Imagem de satélite · Esri</option>
+              <option value="streets">Mapa de ruas · OpenStreetMap</option>
+            </select>
+            <span class="select-caret" aria-hidden="true">⌄</span>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 8 6l4 12 4-12 4 12"></path><path d="M3 12h18"></path></svg>Satélites</h2>
+          <div id="mapSatelliteSlot">
+            <div id="trackedSatelliteControl" class="tracked-satellite-control">
+              <label class="sr-only" for="trackedSatellite">Satélite rastreado</label>
+              <select id="trackedSatellite" disabled><option>Carregando trilhas…</option></select>
+            </div>
+          </div>
+          <div class="satellite-id-readout"><i class="status-dot"></i><span>NORAD: <strong id="trackedNorad">—</strong></span><small id="trackedSatelliteName">—</small></div>
+          <details class="satellite-filter-details">
+            <summary>Satélites para calcular <span class="small-count"><span id="summarySatelliteCount">—</span> disponíveis</span></summary>
+            <div class="field-heading"><span class="limit-tag">LIMITE 12 POR CÁLCULO</span></div>
+            <div id="satelliteFilters" aria-live="polite">Aguardando dados orbitais…</div>
+            <button id="selectAll" class="text-action" type="button">Selecionar todos</button>
+            <div id="warning" class="warning-box" role="status"></div>
+          </details>
+        </div>
+
+        <div class="sidebar-section location-section">
+          <h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"></path><circle cx="12" cy="10" r="2"></circle></svg>Local de observação</h2>
+          <label class="sr-only" for="locationSelect">Localidade de demonstração</label>
+          <select id="locationSelect"><option>Carregando localidade…</option></select>
+          <div class="observer-summary"><strong id="summaryLocation">Carregando…</strong><small>Fuso <span id="summaryTimezone">—</span></small></div>
+          <p id="meta" class="metadata-line"></p>
+        </div>
+      </details>
+
+      <section id="mapMapSlot" class="map-slot" aria-label="Mapa e próximas passagens">
+        <article class="map-panel" id="mapPanel" aria-labelledby="map-title">
+          <header class="map-panel-heading">
+            <div class="map-panel-title"><span class="micro-label">GEOPASS / CARTOGRAFIA ORBITAL</span><h2 id="map-title">Mapa</h2></div>
+            <div class="map-location-readout"><span>LOCAL DO OBSERVADOR</span><strong id="mapLocationName">—</strong></div>
+            <div class="map-mode-readout"><i class="status-dot"></i><span id="baseMapLabel">IMAGEM DE SATÉLITE</span></div>
+          </header>
+          <div class="map-frame">
+            <div id="map" aria-label="Mapa para escolher o ponto do observador e ver as trilhas terrestres"></div>
+            <span class="map-focus-tag">SATÉLITE EM FOCO <strong id="summaryTrackedSatellite">—</strong></span>
+            <div class="map-bottom-tools">
+              <div class="map-legend" aria-label="Legenda do mapa">
+                <span><i class="legend-track"></i> <b id="legendTrackedName">Satélite selecionado</b></span>
+                <span><i class="legend-other"></i> Outras trilhas</span>
+                <span><i class="legend-sample"></i> Posições amostradas</span>
+                <span><i class="legend-observer"></i> Observador</span>
+                <small class="map-window-note">TRILHA 90 MIN · OUTRAS POSIÇÕES · ÉPOCA DO CONJUNTO · NÃO AO VIVO</small>
+              </div>
+              <div class="regional-locator">
+                <span class="locator-label">LOCALIZADOR REGIONAL</span>
+                <div id="overviewMap" aria-label="Mini mapa regional da localização selecionada"></div>
+              </div>
+            </div>
+            <div class="map-coordinate-readout" aria-live="polite"><span>LAT <b id="mapLatitude">—</b></span><i></i><span>LON <b id="mapLongitude">—</b></span><i></i><span>ZOOM <b id="mapZoom">—</b></span></div>
+          </div>
+          <div class="map-caption"><span>PROJEÇÃO TERRESTRE · WGS84 · 90 MIN</span><p>A trilha mostra uma janela centrada no próximo pico; o ícone em foco marca a amostra mais próxima desse pico e os demais ícones usam a época do conjunto. O Rastreador percorre a série completa; nada aqui é posição ao vivo.</p></div>
+        </article>
+
+        <details class="pass-panel panel-surface" id="passPanel" aria-labelledby="events-title" open>
+          <summary class="pass-panel-heading"><div><span class="micro-label">JANELA ORBITAL</span><h2 id="events-title">Próximas Passagens</h2></div><span class="pass-count"><strong id="passCount">0</strong><small id="summaryPassCount">eventos</small></span></summary>
+          <div id="passList" class="pass-list" aria-live="polite"><div class="empty">Carregando dados orbitais…</div></div>
+          <div class="pass-panel-footer"><span>Elevação mínima <strong id="threshold">—</strong></span><span>Fuso <strong id="mapTimezoneLabel">—</strong></span></div>
+          <button class="view-all-button" type="button" data-view="passes">Ver todas as passagens <span aria-hidden="true">→</span></button>
+        </details>
+      </section>
+    </section>
+
+    <section id="view-passes" class="app-view content-view" role="tabpanel" aria-label="Passagens orbitais" hidden>
+      <header class="view-heading"><div><span class="micro-label">ORBITAL ANALYSIS / 02</span><h1>Passagens orbitais</h1><p>Janelas calculadas para o observador e a seleção atual de satélites.</p></div><div class="view-stat"><span>EVENTOS NA JANELA</span><strong id="passTableCount">0</strong></div></header>
+      <div class="passes-layout">
+        <section class="table-panel panel-surface" aria-label="Tabela de passagens previstas">
+          <div class="table-toolbar"><span>PREVISÃO GEOMÉTRICA</span><span id="tableWindowLabel">Janela dos dados</span></div>
+          <div class="table-scroll"><table class="pass-table"><thead><tr><th>Satélite / NORAD</th><th>Início</th><th>Máx. elevação</th><th>Azimute</th><th>Término</th></tr></thead><tbody id="passTableBody"><tr><td colspan="5" class="empty-cell">Aguardando previsões…</td></tr></tbody></table></div>
+        </section>
+        <aside class="pass-detail-panel panel-surface" aria-labelledby="passDetailTitle">
+          <span class="micro-label">DETALHE DO EVENTO</span><h2 id="passDetailTitle">Selecione uma passagem</h2>
+          <p id="passDetailNorad" class="detail-id">NORAD: —</p>
+          <div class="detail-timeline" aria-label="Linha do tempo da passagem"><div><i></i><span>INÍCIO</span><strong id="passDetailStart">—</strong></div><div><i></i><span>MÁXIMO</span><strong id="passDetailPeak">—</strong></div><div><i></i><span>FIM</span><strong id="passDetailEnd">—</strong></div></div>
+          <dl class="detail-metrics"><div><dt>Elevação máxima</dt><dd id="passDetailElevation">—</dd></div><div><dt>Azimute no máximo</dt><dd id="passDetailAzimuth">—</dd></div><div><dt>Limite geométrico</dt><dd id="passDetailThreshold">—</dd></div><div><dt>Época dos elementos</dt><dd id="passDetailEpoch">—</dd></div></dl>
+          <button id="passDetailSend" class="button send-pass-button" type="button" data-pass-index="0" disabled>Enviar resumo ao ESP32</button>
+        </aside>
+      </div>
+      <p class="scientific-note">Uma passagem geométrica acima do limiar não confirma iluminação, céu escuro ou visibilidade a olho nu.</p>
+    </section>
+
+    <section id="view-tracker" class="app-view content-view tracker-view" role="tabpanel" aria-label="Rastreador orbital" hidden>
+      <header class="view-heading"><div><span class="micro-label">GROUND TRACK / 03</span><h1>Rastreador orbital</h1><p>Projeção da trajetória sobre o solo, calculada a partir dos pontos amostrados.</p></div><span class="simulation-badge">SIMULAÇÃO · NÃO TEMPO REAL</span></header>
+      <div id="trackerMapSlot" class="tracker-map-slot"></div>
+      <section class="tracker-controls-panel panel-surface" aria-labelledby="tracker-title">
+        <div class="tracker-toolbar"><div><span class="micro-label">RÉGUA TEMPORAL</span><h2 id="tracker-title">Instante da simulação</h2></div><div id="trackerSatelliteSlot"></div></div>
+        <div class="tracker-slider-row"><span class="time-edge">INÍCIO DA AMOSTRAGEM</span><label class="sr-only" for="trackSlider">Instante da simulação</label><input id="trackSlider" type="range" min="0" max="0" value="0" disabled><span class="time-edge">FIM DA AMOSTRAGEM</span></div>
+        <div class="track-actions"><button id="playTrack" class="button button-primary" type="button" disabled>Reproduzir</button><button id="showTrack" class="button button-secondary" type="button" disabled>Ver rota completa</button><button id="showObserver" class="button button-secondary" type="button">Voltar ao local</button></div>
+        <p id="trackPosition" class="track-position" aria-live="polite">Aguardando trilhas orbitais…</p>
+        <p id="trackNote" class="track-note">A projeção da órbita sobre o solo não é a trajetória aparente no céu nem uma posição ao vivo.</p>
+      </section>
+    </section>
+
+    <section id="view-esp32" class="app-view content-view esp32-view" role="tabpanel" aria-label="Integração ESP32" hidden>
+      <header class="view-heading"><div><span class="micro-label">LOCAL TELEMETRY / 04</span><h1>Integração ESP32</h1><p>Comunicação serial com o dispositivo conectado ao computador do usuário.</p></div><span class="hardware-badge"><i class="status-dot"></i> USB / WEB SERIAL</span></header>
+      <div class="hardware-layout">
+        <section class="hardware-console panel-surface" aria-labelledby="hardware-title">
+          <div class="hardware-console-heading"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect><path d="M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3M9 9h6v6H9z"></path></svg><div><span class="micro-label">SERIAL LINK</span><h2 id="hardware-title">ESP32 por USB</h2></div></div>
+          <p class="panel-copy">A placa conecta ao navegador no computador local. O GeoPass continua funcionando sem o ESP32.</p>
+          <button id="connectEsp32" class="button button-primary connect-button" type="button">Conectar ESP32</button>
+          <div class="serial-state-block"><span class="micro-label">ESTADO DA CONEXÃO</span><p id="esp32Status" class="serial-status" role="status" aria-live="polite">As previsões funcionam normalmente sem o ESP32.</p></div>
+          <p class="hardware-footnote">A porta só é solicitada após um clique. Use Chrome ou Edge em HTTPS/localhost e feche o Monitor Serial antes de conectar.</p>
+        </section>
+        <aside class="transmission-panel panel-surface" aria-labelledby="transmissionTitle"><span class="micro-label">PRÓXIMO ENVIO</span><h2 id="transmissionTitle">Resumo da passagem</h2><div id="esp32PassSummary" class="esp32-pass-summary"><p>Carregando a previsão selecionada…</p></div><button id="esp32SendPass" class="button button-secondary send-pass-button" type="button" data-pass-index="0" disabled>Enviar resumo ao ESP32</button><div class="protocol-note"><span>PROTOCOLO</span><code>NEXT | 1 | NORAD | UTC</code><small>O firmware confirma o recebimento com ACK. Nenhuma mensagem é enviada sem ação do usuário.</small></div></aside>
+      </div>
+    </section>
+
+    <section id="view-methodology" class="app-view content-view methodology-view" role="tabpanel" aria-label="Metodologia científica" hidden>
+      <header class="view-heading"><div><span class="micro-label">TECHNICAL NOTES / 05</span><h1>Metodologia</h1><p>Fundamentos técnicos, processamento orbital e limites de interpretação.</p></div><span class="coordinate-system">WGS84 <i></i> EPSG:4326</span></header>
+      <div class="methodology-grid">
+        <article class="method-entry"><span class="method-number">01</span><div><h2>Fontes de dados orbitais</h2><p>O GeoPass utiliza elementos orbitais públicos publicados pela CelesTrak. A época da geração é apresentada para contextualizar a validade dos elementos.</p></div><span class="method-tag">CELESTRAK</span></article>
+        <article class="method-entry"><span class="method-number">02</span><div><h2>Elementos OMM</h2><p>Os registros Orbit Mean-Elements Message fornecem os parâmetros usados pelo propagador e identificam cada objeto por seu número NORAD.</p></div><span class="method-tag">OMM</span></article>
+        <article class="method-entry"><span class="method-number">03</span><div><h2>Propagação SGP4</h2><p>O modelo SGP4 propaga os elementos orbitais para instantes futuros; o resultado depende da época e da qualidade dos dados recebidos.</p></div><span class="method-tag">SGP4</span></article>
+        <article class="method-entry"><span class="method-number">04</span><div><h2>Skyfield</h2><p>A biblioteca Skyfield fornece escala temporal, objetos de satélite e referenciais necessários à propagação e à conversão geográfica.</p></div><span class="method-tag">PYTHON</span></article>
+        <article class="method-entry"><span class="method-number">05</span><div><h2>Cálculo de passagens</h2><p>O observador é definido por latitude e longitude. As passagens geométricas são agrupadas a partir dos eventos de entrada, máximo e saída acima do limiar configurado.</p></div><span class="method-tag">EVENTOS</span></article>
+        <article class="method-entry"><span class="method-number">06</span><div><h2>Elevação e azimute</h2><p>A elevação e o azimute são relativos ao observador, ao instante do pico e aos elementos disponíveis. O horário orbital é mantido em UTC e formatado no fuso escolhido.</p></div><span class="method-tag">TOPOCÊNTRICO</span></article>
+        <article class="method-entry"><span class="method-number">07</span><div><h2>Trilha terrestre</h2><p>A posição mostrada é um subponto obtido dos pontos amostrados e apresentados no mapa Leaflet. A trilha é uma projeção sobre o solo, não uma trajetória aparente no céu.</p></div><span class="method-tag">WGS84</span></article>
+        <article class="method-entry"><span class="method-number">08</span><div><h2>Limitações do modelo</h2><p>Passagem geométrica não garante observação: iluminação solar, condições atmosféricas, obstáculos locais, época e qualidade dos elementos interferem na visibilidade e precisão.</p></div><span class="method-tag">LIMITES</span></article>
+        <article class="method-entry"><span class="method-number">09</span><div><h2>Integração ESP32</h2><p>A Web Serial API conecta a placa local após autorização explícita. O GeoPass envia a passagem selecionada em UTC e aguarda confirmação ACK do firmware.</p></div><span class="method-tag">WEB SERIAL</span></article>
+      </div>
+      <p class="method-source-note">Fontes cartográficas: Esri World Imagery ou OpenStreetMap, conforme a camada selecionada. Busca de local: OpenStreetMap/Nominatim. Os créditos completos são apresentados junto ao mapa.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand"><span class="footer-mark" aria-hidden="true">◉</span><strong>GeoPass</strong><i></i><span>Space Tech Bootcamp 2026</span></div>
+    <div class="footer-system"><i id="systemIndicator" class="status-dot is-pending"></i><span id="systemStatus">Carregando dados</span></div>
+    <div class="footer-reference"><span>WGS84</span><i></i><span>EPSG:4326</span></div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
