@@ -1,80 +1,306 @@
 <p align="center">
-  <img src="FTL%20Brasil%20Logo.png" alt="Future Tech Leaders" width="720">
+<img src="docs/images/GeoPass-Project-Mark.svg" alt="Marca GeoPass" width="120">
+</p> <h1 align="center">GeoPass</h1> <p align="center">
+  <strong>WebGIS para prever, consultar e visualizar passagens de satélites.</strong>  
+
+  Dados orbitais públicos, propagação SGP4 e cartografia interativa em um único fluxo.
+</p> <p align="center">
+  <a href="#execução-rápida">Executar</a> ·
+  <a href="#funcionalidades">Funcionalidades</a> ·
+  <a href="#arquitetura">Arquitetura</a> ·
+  <a href="#testes-e-validação">Testes</a> ·
+  <a href="#implantação-na-vercel">Vercel</a>
 </p>
 
-<h1 align="center">GeoPass</h1>
+---
+
+## Visão geral
+
+O GeoPass responde a uma pergunta prática: **quando um satélite passará sobre uma cidade ou sobre um ponto escolhido?** O sistema combina localização, tempo, elementos orbitais OMM publicados pela CelesTrak e propagação SGP4 para calcular eventos de passagem e exibi-los sobre um mapa Leaflet.
+
+A aplicação foi desenvolvida como projeto de capstone do **Future Tech Leaders Brasil — Space Tech Bootcamp 2026**. As previsões são geométricas: uma passagem indica que o satélite ultrapassa o limite de elevação configurado, mas não garante visibilidade a olho nu.
+
+## Capturas da aplicação
+
+### Mapa orbital
+
+O mapa é a superfície principal do produto. Ele mostra o local do observador, as trajetórias selecionadas, outras trilhas, posições amostradas e a janela de próximas passagens.
 
 <p align="center">
-  WebGIS para prever, consultar e visualizar passagens de satélites sobre locais escolhidos.
+<img src="docs/images/GeoPass-Mapa-Desktop.png" alt="Mapa orbital do GeoPass em desktop" width="920">
 </p>
 
-## Sobre o Space Tech Bootcamp
+### Ao Vivo
 
-O GeoPass é o projeto de capstone do **Future Tech Leaders Brasil 2026 — Space Tech Bootcamp**, iniciativa de capacitação online e gratuita em tecnologias espaciais realizada no Brasil pela Agência Espacial Brasileira (AEB), pelo Programa das Nações Unidas para o Desenvolvimento (PNUD), pelo UNDP Istanbul International Center for Private Sector in Development (UNDP ICPSD) e pelo SDG AI Lab. O [e-book oficial](https://github.com/ftl-brazil-2026/ebook) reúne conteúdos de GIS e sensoriamento remoto, Machine Learning, Deep Learning e aplicações geoespaciais. A [apresentação da AEB](https://www.gov.br/aeb/pt-br/assuntos/noticias/inscricoes-abertas-para-o-bootcamp-de-tecnologias-espaciais-do-future-tech-leaders-programme) traz informações institucionais sobre a formação.
+A vista Ao Vivo propaga a ISS localmente a partir dos elementos OMM, diferencia o rastro percorrido da previsão futura e informa época, idade, origem, posição, altitude e velocidade estimadas.
 
-O projeto se relaciona principalmente ao eixo de dados geoespaciais do programa: combina uma localização na Terra com dados orbitais públicos e previsões temporais, apresentando o resultado em um mapa interativo.
+<p align="center">
+<img src="docs/images/GeoPass-Ao-Vivo.png" alt="Vista Ao Vivo do GeoPass" width="920">
+</p>
 
-## O problema que o GeoPass aborda
+### Layout responsivo
 
-Elementos orbitais são publicados em formatos técnicos e nem sempre são simples de relacionar a uma pergunta prática: **quando um satélite passará sobre a minha cidade ou sobre um ponto específico?** O GeoPass busca tornar essa informação mais acessível ao combinar localização, tempo e propagação orbital em uma interface cartográfica.
+<p align="center">
+<img src="docs/images/GeoPass-Mobile.png" alt="GeoPass em tela mobile" width="320">
+</p>
 
-O sistema usa elementos orbitais OMM da CelesTrak e o modelo SGP4 por meio do Skyfield. Para um observador escolhido, calcula eventos de subida, ponto de maior elevação e descida. A aplicação também apresenta elevação máxima, azimute e época dos elementos utilizados.
+## Sumário
 
-Uma passagem indicada pelo GeoPass é geométrica: o satélite ultrapassa o limite de elevação configurado. Isso não garante visibilidade a olho nu, pois iluminação do satélite, condições do céu e obstáculos locais também influenciam.
+- [Funcionalidades](#funcionalidades)
+
+- [Evolução do projeto](#evolu%C3%A7%C3%A3o-do-projeto)
+
+- [Arquitetura](#arquitetura)
+
+- [Estrutura do repositório](#estrutura-do-reposit%C3%B3rio)
+
+- [Execução rápida](#execu%C3%A7%C3%A3o-r%C3%A1pida)
+
+- [Testes e validação](#testes-e-valida%C3%A7%C3%A3o)
+
+- [Implantação na Vercel](#implanta%C3%A7%C3%A3o-na-vercel)
+
+- [Fontes e atribuições](#fontes-e-atribui%C3%A7%C3%B5es)
+
+- [Limitações conhecidas](#limita%C3%A7%C3%B5es-conhecidas)
+
+## Funcionalidades
+
+| Área | O que está disponível |
+| --- | --- |
+| **Mapa** | Camada inicial OpenStreetMap, alternativa Esri World Imagery, local do observador, seleção de satélites, trilhas e próximas passagens. |
+| **Passagens** | Tabela completa de eventos, início, pico, fim, elevação máxima, azimute e época dos elementos. |
+| **Rastreador** | Reprodução de uma trajetória pré-calculada, pausa, retomada, seleção do instante e enquadramento da rota. Não é telemetria ao vivo. |
+| **Ao Vivo** | Propagação SGP4 local da ISS, posição estimada, altitude, velocidade, rastro passado, previsão futura e atualização manual do OMM. |
+| **ESP32** | Comunicação local com Web Serial no navegador, envio de resumo de passagem e validação do `ACK`. |
+| **Metodologia** | Explicação das fontes, coordenadas, modelo orbital, limitações e interpretação dos resultados. |
+| **Busca** | Consulta de localidades pelo Nominatim, cache local, coordenadas escolhidas no mapa e fuso horário. |
+
+### Dados orbitais e estados do Ao Vivo
+
+A interface diferencia os estados dos elementos orbitais:
+
+- `live`: consulta recente à CelesTrak;
+
+- `build_snapshot`: snapshot produzido no build;
+
+- `build_snapshot_stale`: fallback quando a fonte externa está indisponível;
+
+- elementos com mais de 72 horas desde a época: posição e trilha não são apresentadas como atuais.
+
+A atualização manual usa `/api/live/omm?refresh=1`, ignorando o snapshot recente antes de consultar a fonte orbital.
 
 ## Evolução do projeto
 
 ### Fase 1 — mapa e previsões iniciais
 
-A primeira versão calcula previsões para localidades configuradas e grava os resultados em um conjunto de dados JSON. A interface Leaflet mostra localidades, trilhas terrestres, filtros e horários previstos. A suíte contém quatro testes automatizados para o agrupamento dos eventos orbitais.
+Cálculo de previsões para localidades configuradas, dataset JSON, mapa Leaflet, filtros, trilhas terrestres e horários previstos.
 
 ### Fase 2 — busca geográfica e cálculo dinâmico
 
-A segunda versão acrescenta um servidor Flask, busca manual de cidades com Nominatim e recálculo para coordenadas encontradas ou escolhidas por clique no mapa. Inclui escolha de fuso horário, sugestões regionais para o Brasil, cache de geocodificação e validações de entrada. A suíte contém onze testes de núcleo e API.
+Servidor Flask, busca de cidades com Nominatim, recálculo para coordenadas escolhidas, fuso horário, sugestões regionais para o Brasil, cache de geocodificação e validações de entrada.
 
 ### Fase 3 — rastreador orbital simulado
 
-A terceira versão acrescenta a visualização da trilha terrestre de um satélite selecionado. O usuário pode mover um marcador com um controle de tempo, reproduzir ou pausar a simulação, enquadrar a rota completa e retornar ao local do observador. O painel mostra o instante simulado em UTC e no fuso escolhido, além do subponto terrestre em latitude e longitude.
-
-A trilha é calculada previamente a partir dos elementos orbitais disponíveis quando o dataset é gerado, com amostragem de dois minutos por padrão. **O rastreador não é ao vivo**: o marcador percorre pontos pré-calculados e não indica a posição atual do satélite. A Fase 3 mantém onze testes de núcleo e API; seus controles visuais também são verificados manualmente.
+Visualização da trilha de um satélite selecionado, marcador temporal, reprodução, pausa, enquadramento e leitura do subponto terrestre. A trilha é pré-calculada e não representa posição atual.
 
 ### Fase 4 — integração serial local com ESP32
 
-A quarta versão acrescenta uma ponte pySerial no servidor Flask local e um firmware PlatformIO para o ESP32. A pessoa seleciona uma passagem e uma porta; o computador envia uma mensagem `NEXT` com horários UTC e elevação máxima. O firmware valida os campos, imprime a passagem no Monitor Serial e responde com `ACK`.
+Ponte pySerial no servidor local e firmware PlatformIO. O computador envia uma mensagem `NEXT`; o firmware valida os campos, imprime o evento e responde com `ACK`.
 
-O firmware foi carregado e testado durante o desenvolvimento em uma placa ESP32-WROOM-32D DevKitC. Os registros compartilhados mostraram `READY|GEOPASS1` na inicialização e `ACK|1|25544|OK` após envio pela COM3. A suíte automatizada da Fase 4 contém vinte testes; os testes seriais simulam a comunicação e não substituem a validação física.
+### Fase 5 — Web Serial e preparação para implantação
 
-### Fase 5 — Web Serial e preparação para Vercel
+Comunicação da placa pelo navegador com Web Serial, configuração de build, saída `public/`, camadas cartográficas, interface responsiva e separação entre execução local e runtime remoto.
 
-A quinta versão move a comunicação com a placa para a **Web Serial API no próprio navegador**. A pessoa autoriza a porta em uma ação explícita, envia o resumo da passagem e recebe o `ACK` sem exigir que o servidor hospedado acesse a USB do computador. A conexão física pelo navegador foi validada durante o desenvolvimento.
+### Fase 6 — visualização orbital e evolução cartográfica
 
-A fase também adiciona configuração para runtime Flask no Vercel e um script que gera a interface e os dados iniciais em `public/`. A interface da Fase 5 usa a identidade escura Scientific Atlas, com cinco vistas responsivas, camadas cartográficas e créditos visíveis; veja as capturas e instruções no [README da Fase 5](fase5/README.md). O build local foi executado com sucesso e a suíte contém **25 testes**, incluindo tratamento do filesystem somente leitura e serving do manifesto/assets. **O site ainda não está publicado**: um deploy remoto precisa ser iniciado e validado na conta Vercel do autor.
+A fase final integra o rastreamento orbital ao GeoPass existente:
+
+- Ao Vivo com propagação local SGP4 da ISS;
+
+- atualização OMM e fallback de snapshot;
+
+- validação da idade dos elementos;
+
+- distinção entre rastro percorrido e previsão futura;
+
+- componente compartilhado `trajectory.mjs`;
+
+- normalização de longitude e segmentação do antimeridiano;
+
+- sincronização do marcador com a época do conjunto;
+
+- mapas padrão Leaflet compartilhados entre Mapa e Ao Vivo;
+
+- OSM como camada inicial e Esri como alternativa;
+
+- mapa dominante, sidebar reduzida e painel de passagens recolhido;
+
+- hardening de payloads, cabeçalhos de segurança e respostas de erro;
+
+- entrypoint Python e configuração padrão para Vercel.
+
+A Fase 6 não utiliza uma aba de globo 3D separada. A representação oficial permanece um mapa Leaflet padrão, mantendo consistência cartográfica e compatibilidade de implantação.
+
+## Arquitetura
+
+```
+Navegador
+├── web/index.html
+├── web/assets/app.js              mapa, passagens, rastreador e ESP32
+├── web/assets/live-orbit.js       propagação e experiência Ao Vivo
+├── web/assets/trajectory.mjs      trajetória compartilhada
+├── web/assets/vendor/             módulos locais do satellite.js
+└── Leaflet + tiles OSM/Esri
+
+Servidor Flask
+├── server.py                      páginas, APIs, geocodificação e passagens
+├── scripts/build_dataset.py       OMM, Skyfield, trilhas e passagens
+├── scripts/live_orbit.py          snapshot, frescor e fallback OMM
+└── scripts/esp32_serial.py        protocolo NEXT/ACK
+
+Implantação
+├── api/index.py                   exporta server.app para Vercel
+├── vercel.json                    build, public/ e rewrite /api/*
+└── scripts/vercel_build.py        gera dataset e saída estática
+```
 
 ## Estrutura do repositório
 
-```text
-README.md                         visão geral, bootcamp e evolução
-RELATORIO_TESTES.txt              nomes e explicação dos testes executados
-VERCEL_TESTE.md                    checklist de configuração e teste do preview
-FTL Brasil Logo.png               logo referenciada neste README
-fase1/                            mapa e previsões iniciais
-fase2/                            busca geográfica e cálculo dinâmico
-fase3/                            mapa com simulação de rota terrestre
-fase4/                            integração serial local com ESP32/PlatformIO
-fase5/                            Web Serial e preparação de build Vercel
+```
+README.md
+RELATORIO_AUDITORIA_FASE6.md
+RELATORIO_CARTOGRAFIA.md
+RELATORIO_TRAJETORIAS.md
+api/index.py                        entrypoint Python para Vercel
+config.json                         parâmetros e localidades
+requirements.txt                    dependências Python
+pyproject.toml                      metadados do projeto
+vercel.json                         configuração padrão de build Vercel
+server.py                           aplicação Flask
+web/                                frontend fonte
+data/                              datasets e snapshots locais
+scripts/                            build, cálculos e testes
+tests/                              testes Python e fixture OMM
+public/                             saída gerada pelo build
+docs/images/                        imagens usadas nesta documentação
+esp32/                              firmware e configuração PlatformIO
 ```
 
-Cada pasta contém seus arquivos, testes, dependências e README com instruções da respectiva etapa. Para executar uma versão, entre na pasta desejada e siga o `README.md` correspondente.
+## Execução rápida
 
-## Tecnologias e fontes de dados
+### Requisitos
 
-O projeto utiliza Python, Skyfield/SGP4 e Flask no backend, JavaScript e Leaflet na interface cartográfica e C++/Arduino com PlatformIO no firmware. Os elementos orbitais vêm da [CelesTrak](https://celestrak.org/). A busca por cidades usa o [Nominatim](https://nominatim.org/) e deve respeitar sua [política de uso](https://operations.osmfoundation.org/policies/nominatim/). A Fase 5 oferece [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) com overlay de limites/rótulos e [OpenStreetMap](https://www.openstreetmap.org/) como alternativa; a atribuição permanece visível. Os provedores têm termos e disponibilidade próprios; consulte a [pesquisa cartográfica](fase5/artifacts/research-map-layer.md).
+- Python 3.12;
 
-## Limites do protótipo
+- Node.js para os testes de módulos e paridade;
 
-Este repositório reúne as **Fases 1 a 5**. A integração ESP32 é opcional; nesta versão ela confirma e imprime o resumo recebido, sem OLED, LED ou buzzer. As previsões são geométricas, e a trilha é uma simulação pré-calculada, não ao vivo. Os tiles externos são destinados à demonstração acadêmica não comercial e estão sujeitos aos termos dos provedores. O build de Vercel foi testado localmente, mas este pacote não contém URL de produção nem comprova um deploy remoto.
+- conexão com a internet para CelesTrak, Nominatim e tiles;
 
-## Autor
+- navegador compatível com Web Serial para a integração ESP32.
 
-**Luiz Gustavo de Barros e Silva Santos**  
+### Instalação e execução
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python scripts/vercel_build.py
+python server.py
+```
+
+Abra [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
+
+### Atualização dos dados
+
+```bash
+python scripts/build_dataset.py --refresh
+```
+
+O comando baixa novamente o grupo configurado da CelesTrak, calcula as trilhas e atualiza `data/passes.json`. A aplicação usa snapshot local para manter uma inicialização possível quando a consulta externa falha.
+
+## Testes e validação
+
+### Suíte automatizada
+
+```bash
+python -m unittest discover -s tests -p 'test_*.py' -q
+node scripts/test_trajectory.mjs
+node scripts/test_live_track.mjs
+node scripts/test_live_freshness.mjs
+python scripts/verify_live_parity.py
+python scripts/vercel_build.py
+```
+
+A auditoria final executou **40 testes Python**, testes de trajetória, antimeridiano, frescor, paridade satellite.js/Skyfield, build e smoke test do entrypoint Vercel.
+
+### Verificação visual
+
+A interface foi percorrida em Chromium nas resoluções 1366×768, 1440×900 e 390×844. As seis abas foram abertas, as camadas OSM e Esri foram trocadas no Mapa e no Ao Vivo, e o carregamento de tiles foi confirmado.
+
+Os detalhes, riscos residuais e resultados por categoria estão em [RELATORIO_AUDITORIA_FASE6.md](RELATORIO_AUDITORIA_FASE6.md).
+
+## Implantação na Vercel
+
+O pacote contém o contrato padrão de implantação:
+
+- `vercel.json` define `buildCommand`, `outputDirectory`, runtime Python 3.12 e rewrite de `/api/*`;
+
+- `api/index.py` exporta `server.app`;
+
+- `scripts/vercel_build.py` gera `public/`;
+
+- não são necessárias credenciais privadas no build;
+
+- dados externos são consultados em runtime ou preservados em snapshot.
+
+Para validar localmente a mesma estrutura:
+
+```bash
+python scripts/vercel_build.py
+python -c "import json; json.load(open('vercel.json'))"
+python -c "from api.index import app; print(app.name)"
+```
+
+A implantação real ainda precisa ser executada na conta Vercel do responsável. O build local e a extração limpa do pacote foram validados; isso não substitui o teste de deploy remoto.
+
+## Fontes e atribuições
+
+- Dados orbitais: [CelesTrak](https://celestrak.org/).
+
+- Busca geográfica: [Nominatim](https://nominatim.org/), seguindo a [política de uso](https://operations.osmfoundation.org/policies/nominatim/).
+
+- Mapa de ruas: [OpenStreetMap](https://www.openstreetmap.org/), com atribuição visível.
+
+- Imagem de satélite e referência: [Esri World Imagery](https://www.arcgis.com/), com atribuição visível.
+
+- Propagação: [Skyfield](https://rhodesmill.org/skyfield/) e [satellite.js](https://github.com/shashwatak/satellite-js).
+
+- Cartografia interativa: [Leaflet](https://leafletjs.com/).
+
+As licenças e atribuições dos componentes vendorizados devem ser mantidas ao redistribuir o pacote.
+
+## Limitações conhecidas
+
+- CelesTrak, Nominatim, OpenStreetMap e Esri são serviços externos e podem sofrer indisponibilidade, rate limit ou alteração de política.
+
+- A posição Ao Vivo é uma estimativa SGP4 baseada na época e na qualidade dos elementos OMM; não é telemetria.
+
+- Passagens são geométricas e não modelam iluminação, nuvens, obstáculos ou magnitude aparente.
+
+- A comunicação física com ESP32 depende de hardware, permissões do navegador e ambiente compatível com Web Serial.
+
+- A publicação remota precisa ser executada e validada na conta de implantação.
+
+## Documentação técnica
+
+- [Auditoria final da Fase 6](RELATORIO_AUDITORIA_FASE6.md)
+
+- [Auditoria cartográfica](RELATORIO_CARTOGRAFIA.md)
+
+- [Reconstrução das trajetórias](RELATORIO_TRAJETORIAS.md)
+
+## Autoria
+
+**Luiz Gustavo de Barros e Silva Santos**
 Future Tech Leaders Brasil — Space Tech Bootcamp 2026.
