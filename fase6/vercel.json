@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 2,
   "buildCommand": "python scripts/vercel_build.py",
   "outputDirectory": "public",
